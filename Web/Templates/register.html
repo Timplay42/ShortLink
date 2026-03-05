@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Register{% endblock %}
+{% block content %}
+<section class="card">
+  <h1>Регистрация</h1>
+  <p class="muted">Создание аккаунта с ролью `user` по умолчанию.</p>
+  <form id="register-form" class="form-grid">
+    <div class="field">
+      <label for="name">Имя</label>
+      <input id="name" name="name" required />
+    </div>
+    <div class="field">
+      <label for="lastname">Фамилия</label>
+      <input id="lastname" name="lastname" />
+    </div>
+    <div class="field">
+      <label for="username">Username</label>
+      <input id="username" name="username" required />
+    </div>
+    <div class="field">
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" required />
+    </div>
+    <div class="field full">
+      <label for="description">Описание</label>
+      <textarea id="description" name="description"></textarea>
+    </div>
+    <div class="actions full">
+      <button class="btn primary" type="submit">Создать</button>
+      <a class="btn" href="/api/v1/auth/">Вернуться к логину</a>
+    </div>
+  </form>
+  <div id="status" class="status"></div>
+</section>
+
+<script>
+  const form = document.getElementById("register-form");
+  const statusEl = document.getElementById("status");
+
+  function showStatus(text, isError = false) {
+    statusEl.style.display = "block";
+    statusEl.style.borderColor = isError ? "#fca5a5" : "#93c5fd";
+    statusEl.style.background = isError ? "#fef2f2" : "#eff6ff";
+    statusEl.textContent = text;
+  }
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    statusEl.style.display = "none";
+
+    const payload = new URLSearchParams();
+    payload.set("name", form.name.value.trim());
+    payload.set("lastname", form.lastname.value.trim());
+    payload.set("username", form.username.value.trim());
+    payload.set("password", form.password.value);
+    payload.set("description", form.description.value.trim());
+
+    const response = await fetch("/api/v1/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: payload.toString(),
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      const body = await response.text();
+      showStatus(`Ошибка регистрации (${response.status}).\n${body}`, true);
+      return;
+    }
+
+    showStatus("Аккаунт создан. Теперь выполни вход.");
+    form.reset();
+  });
+</script>
+{% endblock %}

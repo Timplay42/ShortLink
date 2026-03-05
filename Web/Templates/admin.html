@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Admin{% endblock %}
+{% block content %}
+<section class="card">
+  <h1>Админ-панель</h1>
+  <p class="muted">Эта страница доступна только пользователю с `user:manage:any`.</p>
+  <div class="actions">
+    <button class="btn primary" id="reload-btn" type="button">Обновить список</button>
+  </div>
+  <div id="status" class="status"></div>
+  <table id="users-table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Username</th>
+        <th>Имя</th>
+        <th>Действие</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</section>
+
+<script>
+  const statusEl = document.getElementById("status");
+  const tableBody = document.querySelector("#users-table tbody");
+
+  function showStatus(text, isError = false) {
+    statusEl.style.display = "block";
+    statusEl.style.borderColor = isError ? "#fca5a5" : "#93c5fd";
+    statusEl.style.background = isError ? "#fef2f2" : "#eff6ff";
+    statusEl.textContent = text;
+  }
+
+  async function fetchUsers() {
+    statusEl.style.display = "none";
+    tableBody.innerHTML = "";
+
+    const response = await fetch("/api/v1/users/all", { credentials: "include" });
+    if (!response.ok) {
+      showStatus(`Не удалось загрузить пользователей (${response.status})`, true);
+      return;
+    }
+
+    const users = await response.json();
+    if (!users.length) {
+      showStatus("Пользователи не найдены.");
+      return;
+    }
+
+    for (const user of users) {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${user.id}</td>
+        <td>${user.username}</td>
+        <td>${user.name ?? ""}</td>
+        <td><button class="btn" data-user-id="${user.id}">Назначить admin</button></td>
+      `;
+      tableBody.appendChild(tr);
+    }
+  }
+
+  tableBody.addEventListener("click", async (event) => {
+    const btn = event.target.closest("button[data-user-id]");
+    if (!btn) return;
+    const userId = btn.dataset.userId;
+
+    const response = await fetch(`/api/v1/users/${userId}/roles/admin`, {
+      method: "POST",
+      credentials: "include",
+    });
+    if (!response.ok) {
+      showStatus(`Не удалось назначить роль (${response.status})`, true);
+      return;
+    }
+    showStatus("Роль admin назначена.");
+  });
+
+  document.getElementById("reload-btn").addEventListener("click", fetchUsers);
+  fetchUsers();
+</script>
+{% endblock %}

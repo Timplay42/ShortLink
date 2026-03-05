@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Login{% endblock %}
+{% block content %}
+<section class="card">
+  <h1>Вход</h1>
+  <p class="muted">Логин ставит `access_token` и `refresh_token` в HttpOnly cookie.</p>
+  <form id="login-form" class="form-grid">
+    <div class="field">
+      <label for="username">Username</label>
+      <input id="username" name="username" required />
+    </div>
+    <div class="field">
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" required />
+    </div>
+    <div class="actions full">
+      <button class="btn primary" type="submit">Войти</button>
+      <a class="btn" href="/api/v1/auth/register">Создать аккаунт</a>
+    </div>
+  </form>
+  <div id="status" class="status"></div>
+</section>
+
+<script>
+  const form = document.getElementById("login-form");
+  const statusEl = document.getElementById("status");
+
+  function showStatus(text, isError = false) {
+    statusEl.style.display = "block";
+    statusEl.style.borderColor = isError ? "#fca5a5" : "#93c5fd";
+    statusEl.style.background = isError ? "#fef2f2" : "#eff6ff";
+    statusEl.textContent = text;
+  }
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    statusEl.style.display = "none";
+
+    const payload = new URLSearchParams();
+    payload.set("username", form.username.value.trim());
+    payload.set("password", form.password.value);
+
+    const response = await fetch("/api/v1/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: payload.toString(),
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      const body = await response.text();
+      showStatus(`Ошибка входа (${response.status}).\n${body}`, true);
+      return;
+    }
+
+    showStatus("Успешный вход. Перенаправляю в профиль...");
+    setTimeout(() => {
+      window.location.href = "/api/v1/auth/profile";
+    }, 500);
+  });
+</script>
+{% endblock %}

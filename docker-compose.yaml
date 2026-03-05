@@ -1,0 +1,48 @@
+networks:
+  shared_network:
+    external: true
+    name: backend_network
+
+services:
+  db:
+    image: postgres:15-alpine3.21
+    container_name: db
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    ports:
+      - "5433:5433"
+    command: -p 5433
+    networks:
+      - shared_network
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ 'CMD-SHELL', 'pg_isready -U ${DB_USER} -d ${DB_NAME} -p 5433' ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  effective_mobile_project:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: effective_mobile_project
+    ports:
+      - "8010:8010"
+    networks:
+      - shared_network
+    environment:
+      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db_wa_find_house:5433/${DB_NAME}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./logs:/app/logs
+      - ./uploads:/app/uploads
+
+
+volumes:
+  postgres_data:
+    driver: local
