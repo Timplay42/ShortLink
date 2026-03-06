@@ -1,5 +1,5 @@
 [project]
-name = "effective-mobile-project"
+name = "ShortLink"
 version = "0.1.0"
 description = "Add your description here"
 requires-python = ">=3.9"

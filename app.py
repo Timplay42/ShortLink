@@ -1,21 +1,38 @@
+from contextlib import asynccontextmanager
+
 import uvicorn
+import redis.asyncio as redis
+import logging
 
 from fastapi import FastAPI, APIRouter
 from starlette.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse
 
-
-from Services.Auth.router import auth_router
-from Services.User.router import user_router
 from Shared.Config import Settings
+from Services.Link.router import link_router
+from Services.Post.router import post_router
 
 settings = Settings()
 
+logging.basicConfig(level=logging.INFO)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logging.info('Application startup')
+    redis_client = redis.from_url(settings.redis.connect_path, db=settings.redis.db)
+    app.state.redis_client = redis_client
+
+    yield
+
+    await redis_client.close()
+    logging.info('Application end')
+
+
 app = FastAPI(
-    title="Effective Mobile Project",
+    title="ShortLink",
     docs_url="/api/docs",
     openapi_url="/api/openapi.json",
     redoc_url="/api/redoc",
+    lifespan=lifespan,
     swagger_ui_parameters={
         "persistAuthorization": "true",
         "defaultModelRendering": "model",
@@ -45,24 +62,9 @@ router = APIRouter()
 async def ping_server():
     return "pong"
 
-@app.get("/", include_in_schema=False)
-async def root_redirect():
-    return RedirectResponse(url="/api/v1/auth/", status_code=307)
-
-
 app.include_router(router)
-
-#user_router
-app.include_router(
-    user_router,
-    prefix=f"{settings.api_prefix}/users"
-)
-
-#auth_router
-app.include_router(
-    auth_router,
-    prefix=f"{settings.api_prefix}/auth"
-)
+app.include_router(post_router)
+app.include_router(link_router)
 
 if __name__ == "__main__":
     uvicorn.run(

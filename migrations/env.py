@@ -4,8 +4,8 @@ from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
-from Services.Auth.model import Permission, Role, role_permissions, user_roles
-from Services.User.model import User
+from Services.Post.model import Post
+from Services.Link.model import Link
 from Shared.BaseModel import Base
 from Shared.Config import Settings
 

@@ -1,7 +1,5 @@
-import datetime
-
-from fastapi.exceptions import HTTPException
 from datetime import datetime
+from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -26,6 +24,9 @@ class BaseRepository:
         if model is not None:
             return model
 
+        else:
+            raise HTTPException(status_code=400, detail="model not found")
+
     async def create(self, data: dict):
         try:
             model = self.model(**data)
@@ -34,25 +35,29 @@ class BaseRepository:
             await self.session.refresh(model)
             return model
         except IntegrityError as error:
-            raise Exception(400, f"{error}")
+            raise HTTPException(status_code=400, detail=str(error))
 
     async def delete(self, model_id: str):
         try:
             model = await self.id(model_id)
             if not model:
-                raise Exception(404, "not found")
+                raise HTTPException(status_code=404, detail="not found")
             await self.session.delete(model)
             await self.session.commit()
             return 200
-        except IntegrityError as error:
-            raise Exception(403, "There are links to other tables")
+        except IntegrityError:
+            raise HTTPException(status_code=403, detail="There are links to other tables")
         except Exception as error:
-            raise Exception(500, f"{error}")
+            if isinstance(error, HTTPException):
+                raise error
+            raise HTTPException(status_code=500, detail=str(error))
 
     async def update(self, model_id: str, update_data: dict, not_self_model=None):
 
         if not_self_model is None:
             model = await self.id(model_id)
+            if model is None:
+                raise HTTPException(status_code=404, detail="not found")
 
         else:
             model = await self.session.get(not_self_model, model_id)
@@ -77,5 +82,5 @@ class BaseRepository:
     async def filter(self, query):
         result = await self.session.scalars(select(self.model).where(query))
         if not result:
-            raise Exception("not found")
+            raise HTTPException(status_code=404, detail="not found")
         return result

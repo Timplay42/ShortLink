@@ -24,19 +24,45 @@ services:
       timeout: 5s
       retries: 5
 
-  effective_mobile_project:
+
+  redis:
+    image: redis:8-alpine
+    container_name: redis
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - REDIS_USER=${REDIS_USER}
+      - REDIS_USER_PASSWORD=${REDIS_USER_PASSWORD}
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./redisdata:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "-a", "$REDIS_PASSWORD", "ping" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+    tty: true
+    stdin_open: true
+    networks:
+      - shared_network
+
+
+  short_link:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: effective_mobile_project
+    container_name: short_link_project
     ports:
       - "8010:8010"
     networks:
       - shared_network
     environment:
-      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db_wa_find_house:5433/${DB_NAME}
+      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db:5433/${DB_NAME}
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     volumes:
       - ./logs:/app/logs
